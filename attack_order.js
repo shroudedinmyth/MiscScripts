@@ -89,6 +89,7 @@ var NormalAttackOrderBuilder = defineObject(BaseObject,
 				//VirtualAttackControl.decreaseRoundCount(virtualActive);
 				
 				attackCount = this._getAttackCount(virtualActive, virtualPassive);
+				root.log(virtualActive.toString());
 			
 				// Loop processing because there is a possibility to attack 2 times in a row.
 				for (j = 0; j < attackCount; j++) {
@@ -108,7 +109,7 @@ var NormalAttackOrderBuilder = defineObject(BaseObject,
                 }
 
                 else {
-                    if (phaseCount === 0 && AbilityCalculator.getAgility(virtualActive, virtualActive.weapon) > AbilityCalculator.getAgility(virtualPassive, virtualPassive.weapon) {
+                    if (phaseCount === 0 && AbilityCalculator.getAgility(virtualActive.unitSelf, virtualActive.weapon) > AbilityCalculator.getAgility(virtualPassive.unitSelf, virtualPassive.weapon)) {
                         phaseCount = (phaseCount+1)%3;
                     }
                     else {
@@ -118,7 +119,7 @@ var NormalAttackOrderBuilder = defineObject(BaseObject,
                 }
 			}
 			
-			if (virtualActive.roundCount === 0 && virtualPassive.roundCount === 0) {
+			if (virtualActive.roundCount <= 0 && virtualPassive.roundCount <= 0) {
 				break;
 			}
 		}
