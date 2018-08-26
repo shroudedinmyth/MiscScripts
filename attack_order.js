@@ -105,16 +105,16 @@ var NormalAttackOrderBuilder = defineObject(BaseObject,
                 if (virtualPassive.hp < defendersHP) {
                     VirtualAttackControl.decreaseRoundCount(virtualActive);
                     VirtualAttackControl.decreaseRoundCount(virtualPassive);
-                    phaseCount = (phaseCount + 1) % 3;
+                    phaseCount = phaseCount++;
                 }
 
                 else {
                     if (phaseCount === 0 && AbilityCalculator.getAgility(virtualActive.unitSelf, virtualActive.weapon) > AbilityCalculator.getAgility(virtualPassive.unitSelf, virtualPassive.weapon)) {
-                        phaseCount = (phaseCount+1)%3;
+                        phaseCount++;
                     }
                     else {
                         VirtualAttackControl.decreaseRoundCount(virtualActive);
-                        phaseCount = (phaseCount + 1) % 3;
+                        phaseCount = phaseCount++;
                     }
                 }
 			}
