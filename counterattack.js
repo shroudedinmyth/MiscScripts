@@ -1,3 +1,25 @@
+(function() {
+	var alias1 = AttackChecker.isCounterattack;
+	
+	AttackChecker.isCounterattack = function(unit, targetUnit) {
+		var weapon, indexArray, secondary;
+		
+		if (!Calculator.isCounterattackAllowed(unit, targetUni)) {
+			return false;
+		}
+		
+		weapon = ItemControl.getEquippedWeapon(unit);
+		secondary = ItemControl.getEquippedSecondary(unit);
+		if (weapon !== null && weapon.isOneSide()) { //equipped with "One Way" weapon, e.g a lance.
+			return false;
+		}
+		
+		//equipped with a bow/gun/ballista, but not ammo; no counterattack.
+		if weapon.custom.
+		
+		
+		alias1.call(this);
+	}
 // Check if the targetUnit can counterattack the unit.
 	isCounterattack: function(unit, targetUnit) {
 		var weapon, indexArray;
@@ -42,4 +64,4 @@
 		
 		return IndexArray.findPos(indexArray, x, y);
 	}
-};
+}) ();

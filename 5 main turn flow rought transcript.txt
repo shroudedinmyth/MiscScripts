@@ -1,0 +1,291 @@
+Chapter 5
+TURN 1
+Blue (B): 12 units, Red (R): 35 units, Green (G): 4 units, Yellow (Y): 10 units
+1: B
+2: R
+3: G
+4: Y
+5: R
+6: R
+7: B
+8: R
+9: R
+10: Y
+11: R
+12: B
+13: R
+14: R
+15: Y
+16: R
+17: B
+18: R
+19: G
+20: R
+21: R
+22: Y
+23: B
+24: R
+25: R
+26: R
+27: Y
+28: B
+29: R
+30: R
+31: B
+32: R
+33: G
+34: Y
+35: R
+36: R
+37: B
+38: R
+39: Y
+40: R
+41: R
+42: B
+43: R
+44: R
+45: Y
+46: R
+47: B
+48: R
+49: G
+50: R
+51: Y
+52: R
+53: B
+54: R
+55: R
+56: R
+57: Y (kills a red unit)
+58: B
+59: R
+60: R
+
+TURN 2
+Blue (B): 12 units, Red (R): 33 units, Green (G): 4 units, Yellow (Y): 10 units
+1: B
+2: R
+3: G
+4: Y
+5: R
+6: R
+7: B
+8: R
+9: R
+10: Y
+11: R
+12: B
+13: R
+14: R
+15: Y
+16: R
+17: B
+18: R
+19: G
+20: R
+21: Y
+22: B
+23: R
+24: R
+25: R
+26: B (kills a red unit)
+27: R
+28: Y
+29: R
+30: R
+31: B (kills a red unit)
+32: R
+33: G
+34: Y
+35: R
+36: R
+37: B
+38: R
+39: Y
+40: R
+41: B
+42: R
+43: R
+44: R
+45: Y
+46: B
+47: R
+48: G
+49: R
+50: R
+51: Y
+52: B
+53: R
+54: R
+55: R
+56: Y
+57: B
+58: R
+
+TURN 3
+Blue (B): 12 units, Red (R): 28 units, Green (G): 4 units, Yellow (Y): 10 units
+1: B
+2: R
+3: G
+4: Y
+5: R
+6: R
+7: B (captures a red unit)
+8: R
+9: Y
+10: R
+11: B
+12: R
+13: R (kills a yellow unit)
+14: Y
+15: B (kills a red unit)
+16: R
+17: G
+18: R
+19: R
+20: Y
+21: B (recruits Marcel (who hasn't moved/acted))
+22: R
+23: R
+24: B
+25: R
+26: Y
+27: R
+28: B
+29: R
+30: G
+31: Y
+32: R
+33: R
+34: B (kills a red unit)
+35: R
+36: Y
+37: R
+38: B
+39: R
+40: R
+41: Y
+42: B
+43: R
+44: G
+45: R
+46: R
+47: R
+48: Y
+49: B
+50: R
+51: R
+52: B
+53: R
+54: Y
+55: R
+
+TURN 4
+Blue (B): 12 units, Red (R): 31 units, Green (G): 4 units, Yellow (Y): 8 units
+1: B
+2: R
+3: G
+4: Y
+5: R
+6: R
+7: B
+8: R
+9: R
+10: Y
+11: B (kills a red unit)
+12: R
+13: R
+14: R
+15: B (kills a red unit)
+16: R
+17: G
+18: Y
+19: R
+20: B (kills a red unit)
+21: R
+22: R
+23: B (kills a red unit)
+24: R
+25: Y
+26: R
+27: R
+28: B
+29: R
+30: R
+31: G
+32: Y (kills a red unit)
+33: B (kills a red unit)
+34: R
+35: R
+36: R
+37: B
+38: R
+39: Y
+40: R
+41: B
+42: R
+43: R
+44: B
+45: R
+46: G
+47: Y
+48: R
+49: R
+50: B
+51: R
+52: R
+53: Y
+54: B
+55: R (killed)
+56: R (killed)
+
+TURN 5
+Blue (B): 12 units, Red (R): 23 units, Green (G): 4 units, Yellow (Y): 8 units
+1: B
+2: R
+3: G
+4: Y
+5: R
+6: B
+7: R (killed)
+8: R
+9: Y (kills a red unit)
+10: B
+11: R
+12: R
+13: B (kills a red unit)
+14: R
+15: G
+16: Y
+17: R
+18: B (kills a red unit)
+19: R
+20: B
+21: R
+22: Y (kills a red unit)
+23: R
+24: B
+25: R
+26: R
+27: G
+28: Y
+29: B
+30: R
+31: R
+32: B (kills a red unit)
+33: R
+34: Y
+35: B
+36: R
+37: R
+38: B (turns Arnold into a green unit)
+39: R
+40: G
+41: Y
+42: R
+43: B
+44: R
+45: R
+46: Y
+47: B (kills a red unit)

@@ -1,0 +1,290 @@
+Chapter 4-2
+TURN 1
+Blue (B): 9 units, Red (R): 13 units, Yellow (Y): 9 units
+1: B (kills a red unit)
+2: R
+3: Y
+4: R
+5: B
+6: R
+7: Y
+8: B
+9: R
+10: Y
+11: B (kills a red unit)
+12: R
+13: Y
+14: B
+15: R
+16: Y
+17: R
+18: B
+19: R
+20: Y
+21: B
+22: R
+23: Y
+24: R
+25: B
+26: R
+27: Y
+28: B
+29: Y
+
+TURN 2
+Blue (B): 9 units, Red (R): 11 units, Yellow (Y): 9 units
+1: B
+2: R
+3: Y
+4: B
+5: R
+6: Y
+7: B (kills a red unit)
+8: R
+9. Y
+10: B
+11: R
+12: Y
+13: B
+14: R
+15: Y
+16: B
+17: R
+18: Y
+19: B
+20: R
+21: Y
+22: B
+23: R
+24: Y
+25: B
+26: R
+27: Y
+
+TURN 3
+Blue (B): 9 units, Red (R): 7 units, Yellow (Y): 9 units
+1: B
+2: R
+3: Y
+4: B
+5: Y
+6: B
+7: R
+8: Y
+9: B
+10: R
+11: Y
+12: B
+13: R
+14: Y
+15: B (kills a red unit)
+16: Y
+17: B
+18: R
+19: Y
+20: B
+21: R
+22: Y
+23: B
+24: R
+25: Y
+
+TURN 4
+Blue (B): 9 units, Red (R): 6 units, Yellow (Y): 9 units
+1: B
+2: R
+3: Y
+4: B
+5: Y
+6: B (kills a red unit)
+7: R
+8: Y
+9: B
+10: R
+11: Y
+12: B
+13: Y
+14: B
+15: R
+16: Y
+17: B
+18: R
+19: Y
+20: B
+21: R
+22: Y
+
+TURN 5
+Blue (B): 9 units, Red (R): 7 units, Yellow (Y): 9 units
+1: B
+2: R
+3: Y
+4: B
+5: Y
+6: B (kills a red unit)
+7: R
+8: Y
+9: B
+10: R
+11: Y
+12: B
+13: R
+14: Y
+15: B
+16: Y
+17: B
+18: R
+19: Y
+20: B
+21: R
+22: Y
+23: B
+24: R
+25: Y
+
+TURN 6
+Blue (B): 9 units, Red (R): 6 units, Yellow (Y): 9 units
+1: B (kills a red unit)
+2: R
+3: Y
+4: B
+5: Y
+6: B
+7: R
+8: Y
+9: B
+10: R
+11: Y
+12: B
+13: Y
+14: B
+15: R
+16: Y
+17: B
+18: R
+19: Y
+20: B
+21: Y
+22: B
+23: Y
+
+TURN 7
+Blue (B): 9 units, Red (R): 7 units, Yellow (Y): 9 units
+1: B
+2: R
+3: Y
+4: B (kills a red unit)
+5: Y
+6: B (kills a red unit)
+7: R
+8: Y
+9: B
+10: R
+11: Y
+12: B
+13: R
+14: Y
+15: B (kills a red unit)
+16: Y
+17: B
+18: R
+19: Y
+20: B
+21: R
+22: Y
+23: B
+24: Y
+
+TURN 8
+Blue (B): 9 units, Red (R): 4 units, Yellow (Y): 9 units
+1: B (kills a red unit)
+2: R
+3: Y
+4: B
+5: Y
+6: B
+7: Y
+8: B
+9: R
+10: Y
+11: B
+12: Y
+13: B
+14: R
+15: Y
+16: B
+17: Y
+18: B
+19: Y
+20: B
+21: Y
+
+TURN 9
+Blue (B): 9 units, Red (R): 3 units, Yellow (Y): 9 units
+1: B
+2: R
+3: Y
+4: B (kills a red unit)
+5: Y
+6: B
+7: Y
+8: B
+9: R
+10: Y
+11: B
+12: Y
+13: B
+14: Y
+15: B
+16: R
+17: Y
+18: B
+19: Y
+20: B
+21: Y
+
+TURN 10 & TURN 11
+Blue (B): 9 units, Red (R): 2 units, Yellow (Y): 9 units
+1: B
+2: R
+3: Y
+4: B
+5: Y
+6: B
+7: Y
+8: B
+9: Y
+10: B
+11: Y
+12: B
+13: R
+14: Y
+15: B
+16: Y
+17: B
+18: Y
+19: B
+20: Y
+
+TURN 12
+Blue (B): 9 units, Red (R): 2 units, Yellow (Y): 9 units
+1: B
+2: R
+3: Y
+4: B
+5: Y
+6: B (captures a red unit)
+7: Y
+8: B
+9: Y
+10: B
+11: Y
+12: B
+13: R
+14: Y
+15: B
+16: Y
+17: B
+18: Y
+19: B
+20: Y
