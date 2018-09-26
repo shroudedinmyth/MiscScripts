@@ -1,0 +1,100 @@
+Turn Flow Algorithm Notes
+
+First, feed in factions. Get their unit counts and get the ordering. Get the ratios of each side to the ones smaller than it. Save each side's ratios as an array and store it as a value for each side in a dictionary of ratios.
+
+For each faction with a unitCount > 0, set the appropriate counts (e.g rCount, bCount, gCount, yCount) to 1, and populate the 0 to r-1 indices of the action queue with ordering blue, red, green, yellow, where r = number of populated sides.
+
+For populating the rest of the action queue, set up a for loop beginning at index r. Find which side to add add into the action queue, like so:
+	* For each side w/ratios, get the number of times the current ratios fail to pass the saved ones.
+		* e.g if the current value of bCount = 2, and gCount = 1, and B > G, then the ratio fails if it is less than the B/G ratio value in the dictionary of saved ratios.
+		* a ratio is a failure if the value < stored ratio value
+		* if a side's count = 0 or equal to the amount submitted, skip the ratio with it.
+		* if all the factions have the same number of failing ratios:
+			* if this number = 0, then add the lowest priority populated side's enum to the queue and increment its count by one.
+			* Otherwise, pick the side with the ratio that's the lowest priority in ordering?
+		* Otherwise, pick the side with the highest priority in ordering.
+	* After adding enumeration to array, increase the appropriate count by 1 and go to next iteration.
+	* return the array.
+	
+Example: Blue: 13 units, Red: 31 units, Green: 4 units, Yellow: 8 units.
+		 Ratios:
+		 	R/B ~= 2.38, R/Y = 3.825, R/G = 7.75
+		 	B/Y = 1.625, B/G = 3.25
+		 	Y/G = 2
+		 Ordering = [Red, Blue, Yellow, Green]
+		 
+	* a = 4: bCount = 1, rCount = 1, gCount = 1, yCount = 1
+		r: (rcount/bCount < R/B, rCount/yCount < R/Y, rCount/gCount < R/G) = 3 failures
+		b: (bcount/yCount < B/Y, bCount/gCount < B/G) = 2 failures
+		y: (yCount/gCount < 2) = 1 failure.
+		actions[4] = red;
+		rCount++;
+	* a = 5; bCount = 1, rCount = 2, gCount = 1, yCount = 1
+		r: (rCount/bCount < R/B, rCount/yCount < R/Y, rCount/gCount < R/G) = 3 failures
+		b: (bCount/yCount < B/Y, bCount/gCount < B/G) = 2 failures
+		y: (yCount/gCount < Y/G) = 1 failure
+		actions[5] = red;
+		rCount++;
+	* a = 6; bCount = 1, rCount = 3, gCount = 1, yCount = 1
+		r: (rCount/bCount > R/B, rCount/yCount < R/Y, rCount/gCount < R/G) = 2 failures
+		b: (bCount/yCount < B/Y, bCount/gCount < B/G) = 2 failures
+		c: (yCount/gCount < Y/G) = 1 failure
+		actions[6] = blue;
+		bCount++;
+	* a = 7; bCount = 2, rCount = 3, gCount = 1, yCount = 1
+		r: (rCount/bCount < R/B, rCount/yCount < R/Y, rCount/gCount < R/G) = 3 failures
+		b: (bCount/yCount > B/Y, bCount/gCount < B/G) = 1 failure
+		y: (yCount/gCount < Y/G) = 1 failure
+		actions[7] = red;
+		rCount++;
+	* a = 8; bCount = 2, rCount = 4, gCount = 1, yCount = 1
+		r: (rCount/bCount < R/B, rCount/yCount > R/Y, rCount/gCount < R/G) = 2 failures
+		b: (bCount/yCount > B/Y, bCount/gCount < B/G) = 1 failure
+		y: (yCount/gCount < Y/G) = 1 failure
+		actions[8] = red;
+		rCount++;
+	* a = 9; bCount = 2, rCount = 5, gCount = 1, yCount = 1
+		r: (rCount/bCount > R/B, rCount/yCount > R/Y, rCount/gCount < R/G) = 1 failure
+		b: (bCount/yCount > B/Y, bCount/gCount < B/G) = 1 failure
+		y: (yCount/gCount < Y/G) = 1 failure
+		actions[9] = yellow;
+		yCount++;
+	* a = 10; bCount = 2, rCount = 5, gCount = 1, yCount = 2
+		r: (rCount/bCount > R/B, rCount/yCount < R/Y, rCount/gCount < R/G) = 2 failures
+		b: (bCount/yCount < B/Y, bCount/gCount < B/G) = 2 failures
+		y: (yCount/gCount = Y/G) = 0 failures
+		actions[10] = blue;
+		bCount++;
+	* a = 11; bCount = 3, rCount = 5, gCount = 1, yCount = 2
+		r: (rCount/bCount < R/B, rCount/yCount < R/Y, rCount/gCount < R/G) = 3 failures
+		b: (bCount/yCount < B/Y, bCount/gCount < B/G) = 2 failures
+		y: (yCount/gCount = Y/G) = 0 failures
+		actions[11] = red;
+		rCount++;
+	* a = 12; bCount = 3, rCount = 6, gCount = 1, yCount = 2
+		r: (rCount/bCount < R/B, rCount/yCount < R/Y, rCount/gCount < R/G) = 3 failures
+		b: (bCount/yCount < B/Y, bCount/gCount < B/G) = 2 failures
+		y: (yCount/gCount = Y/G) = 0 failures
+		actions[12] = red;
+		rCount++;
+	* a = 13; bCount = 3, rCount = 7, gCount = 1, yCount = 2
+		r: (rCount/bCount < R/B, rCount/yCount < R/Y, rCount/gCount < R/G) = 3 failures
+		b: (bCount/yCount < B/Y, bCount/gCount < B/G) = 2 failures
+		y: (yCount/gCount = Y/G) = 0 failures
+		actions[13] = red;
+		rCount++;
+	* a = 14; bCount = 3, rCount = 8, gCount = 1, yCount = 2
+		r: (rCount/bCount > R/B, rCount/yCount > R/Y, rCount/gCount > R/G) = 0 failures
+		b: (bCount/yCount < B/Y, bCount/gCount < B/G) = 2 failures
+		y: (yCount/gCount = Y/G) = 0 failures
+		actions[14] = blue;
+		bCount++;
+	* a = 15; bCount = 4, rCount = 8, gCount = 1, yCount = 2
+		r: (rCount/bCount < R/B, rCount/yCount > R/Y, rCount/gCount > R/G) = 1 failure
+		b: (bCount/yCount > B/Y, bCount/gCount > B/G) = 0 failures
+		y: (yCount/gCount = Y/G) = 0 failures
+		actions[15] = red;
+		rCount++;
+	* a = 16; bCount = 4, rCount = 9, gCount = 1, yCount = 2
+	
+Algorithm needs some tweaking for the ratios to work properly, but this is probably the closest we have for now.
