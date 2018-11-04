@@ -1,15 +1,17 @@
 (function() {
 	var SecondaryEquipmentType {
-		NONE: 0,
-		ACCESSORY: 1,
-		SHIELD: 2,
-		AMMO: 3
+		NONE: 0x01,
+		ACCESSORY: 0x02,
+		SHIELD: 0x04,
+		ARROW: 0x08,
+		BULLET: 0x16,
+		AMMO: 0x32
 	},
 	
 	var ShieldType {
-		SMALL: 0,
-		MEDIUM: 1,
-		LARGE: 2
+		SMALL: 0x01,
+		MEDIUM: 0x02,
+		LARGE: 0x04
 	},
 	
 	//ordering of weapon type params:
