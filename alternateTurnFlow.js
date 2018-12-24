@@ -10,10 +10,10 @@
 }*/
 
 
-function FactionRatioObject(faction, unitCount) {
+function FactionRatioObject(faction, unitCount, work = 0) {
 	this.faction = faction;
 	this.unitCount = unitCount;
-	this.work = 0;
+	this.work = work;
 }
 
 FactionRatioObject.prototype.clear() {
@@ -103,6 +103,69 @@ var ActionQueue = defineObject(BaseObject,
 			return this._queue.slice(0,5);
 		else if (len > 0)
 			return this._queue.slice(0,len);
+		return null;
+	},
+	
+	placeOnTop: function(ttp) {
+		this._queue.splice(0,0,ttp);
+	},
+	
+	_getActionableCounts: function() {
+		return [this._getActionableUnitsList(PlayerList.getSortieList()).getCount(), this._getActionableUnitsList(EnemyList.getAliveList()).getCount(), this._getActionableUnitsList(AllyList.getAliveList()).getCount()];
+	},
+	
+	_getActionableUnitsList(list) {
+		var funcCondition = function(unit) {
+			return (!unit.isWait() && !unit.isInvisible());
+		}
+		return AllUnitList.getList(list, funcCondition);
+	},
+	
+	resetQueue: function() {
+		var _cts = this._getActionableCounts();
+		var armies = _cts.filter(o => o !== undefined && o > 0).map(function(au, i) {
+			if (au !== null && au > 0) {
+				return new FactionRatioObject(i,au,1);
+			};
+		});
+		armies.sort(function (c,d) {
+			return d.unitCount - c.unitCount;
+		});
+		this._queue = [];
+		var totalActions = armies.reduce(function(accumulator, factionObj) {
+			return accumulator + factionObj.unitCount;
+		}, 0);
+		for (var j = 0; j < totalActions; j++) {
+			for (var k = 0; k < armies.length-1; k++) {
+				if ((armies[k].work+1)/(armies[k+1].work+1) < armies[k].unitCount/armies[k+1].unitCount) {
+					this._queue.push(armies[k].faction);
+					armies[k].work++;
+				}
+				else if (k+1 === armies.length - 1) {
+					this._queue.push(armies[k+1].faction);
+					armies[k+1].work++;
+				}
+			}
+		}
+	},
+	
+	getXOccuranceIndex: function(ttp, x) {
+		var ct = 0;
+		for (var a = 0; a < this._queue.length; a++) {
+			if (this._queue[a] === ttp)
+				ct++;
+			
+			if (ct === x)
+				return a;
+		}
+		return -1;
+	},
+	
+	removeXOccurance: function(tType, x) {
+		var idx = this.getXOccuranceIndex(tType, x);
+		if (idx > -1) {
+			return this._queue.splice(idx,1)[0];
+		}
 		return null;
 	}
 });
