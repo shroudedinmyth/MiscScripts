@@ -1,8 +1,8 @@
 var TurnManager = {
-	totalActions = 0;
+	totalActions : 0,
 	actionQueue : null,
-	_actionTracker = null,
-	orderings = null,
+	_actionTracker : null,
+	orderings : null,
 	
 	getActionQueue: function() {
 		return this.actionQueue.getQueue();
@@ -14,10 +14,11 @@ var TurnManager = {
 	
 	isEmpty: function() {
 		return this.actionQueue !== null ? this.actionQueue.isEmpty(): true;
-	}
+	},
 	
 	pop: function() {
 		this.actionQueue.pop();
+		root.log("pop");
 	},
 	
 	playerStandby: function() {
@@ -43,17 +44,17 @@ var TurnManager = {
 	
 	resetCurrentActionCounts: function() {
 		this.totalActions = 0;
-		this._actionTracker.forEach(obj => obj.actionCounter = 0);
+		//this._actionTracker.forEach(function(obj) { obj.actionCounter = 0; });
 	},
 	
 	initializeTrackers: function() {
 		var reorderCounters = root.getCurrentSession().getCurrentMapInfo().custom.reorderCounters !== undefined ? root.getCurrentSession().getCurrentSession.custom.reorderCounters : null;
-		this._actionTracker = [
+		/*this._actionTracker = [
 			{ actionCounter: 0, reorderCounter: reorderCounters !== undefined && reorderCounters.length >= 1 ? reorderCounters[0] : null }, //player berserk
 			{ actionCounter: 0, reorderCounter: reorderCounters !== undefined && reorderCounters.length >= 2 ? reorderCounters[1] : null }, //enemy
 			{ actionCounter: 0, reorderCounter: reorderCounters !== undefined && reorderCounters.length >= 3 ? reorderCounters[2] : null } //npc
 			//maybe add something in for berserk players?
-		];
+		];*/
 	},
 	
 	initializeOrderings: function() {
@@ -61,11 +62,11 @@ var TurnManager = {
 		this.orderings = [0,0,0]; //player (berserk only), enemy, ally.
 	},
 	
-	initializeDefaultOrdering: function() { //call when in EnemyTurn when _actionTracker[turnType].actionCounter == 0
+	/*initializeDefaultOrdering: function() { //call when in EnemyTurn when _actionTracker[turnType].actionCounter == 0
 		var ttp = root.getCurrentSession().getTurnType();
 		this.orderings[ttp].prevOrderedList = TurnControl.getActorList();
-		this.orderings[ttp].currentOrderedList = TurnControl.getActorList().filter(actor => !actor.isActionStop() && !actor.isInvisible());
-	},
+		this.orderings[ttp].currentOrderedList = TurnControl.getActorList().filter(function(actor){ return !actor.isActionStop() && !actor.isInvisible(); });
+	},*/
 	
 	restartQueue: function() {
 		if (this.actionQueue === null) {
@@ -96,6 +97,7 @@ var TurnManager = {
 	
 	setOrdering: function(turntype, index) {
 		this.orderings[turntype] = index;
+		//root.log(this.orderings[turntype]);
 	},
 	
 	getOrderCount: function(turntype) {
@@ -108,7 +110,7 @@ var TurnManager = {
 	
 	resetAllOrderings: function(turntype) {
 		this.orderings = [0,0,0];
-	}
+	},
 	
 	_prepareTurnManager: function() {
 		this.actionQueue = createObject(ActionQueue);
@@ -128,11 +130,11 @@ var TurnManager = {
 };
 
 (function () {
-	BaseTurnLogoEntry.doMainAction = function(isMusic) {
+	BaseTurnLogoFlowEntry.doMainAction = function(isMusic) {
 		var startEndType;
 		
 		// Count a turn number if the player turn starts up.
-		if (TurnManager.isEmpty() && TurnManager.totalActions > 0) {
+		if (TurnManager.isEmpty()) {
 			root.getCurrentSession().setTurnCount(root.getCurrentSession().getTurnCount() + 1);
 			
 			// Count a relative turn.
@@ -154,7 +156,7 @@ var TurnManager = {
 		}
 		
 		CurrentMap.enableEnemyAcceleration(true);
-	}
+	};
 
 	TurnChangeStart.pushFlowEntries = function(straightFlow) {
 		//as normal but when pushing BerserkTurnFlow, only do so if turntype is player and the only movable units left are beserked
@@ -171,31 +173,41 @@ var TurnManager = {
 		}
 		if (root.getCurrentSession().getTurnType() === TurnType.PLAYER && !StateControl.CanControlAUnit()) //note: does not actually create the berserk flow turn if there are no berserked units
 			straightFlow.pushFlowEntry(BerserkFlowEntry);
-	}
+	};
 
 	TurnChangeStart._checkStateTurn = function() {
 		var turnType = root.getCurrentSession().getTurnType();
-		if (TurnManager.actionQueue === null)
-			TurnManager.restartQueue();
 		
 		if (TurnManager.totalActions > 0 && TurnManager.isEmpty())
 			TurnManager.resetAll();
+		
+		if (TurnManager.isEmpty())
+			TurnManager.restartQueue();
 		
 		if (turnType === TurnType.PLAYER && TurnManager.totalActions === 0) {
 			StateControl.decreaseTurn(this._getPlayerList());
 			StateControl.decreaseTurn(EnemyList.getAliveList());
 			StateControl.decreaseTurn(AllyList.getAliveList());
 		}
-	}
+	};
 
+	FreeAreaScene._prepareSceneMemberData = function() {
+		this._turnChangeStart = createObject(TurnChangeStart);
+		this._turnChangeEnd = createObject(TurnChangeEnd);
+		this._playerTurnObject = createObject(PlayerTurn);
+		this._enemyTurnObject = createObject(EnemyTurn);
+		this._partnerTurnObject = createObject(EnemyTurn);
+		TurnManager._prepareTurnManager();
+	};
+	
 	FreeAreaScene.turnEnd = function() {
-		if (!TurnManager.actionQueue || TurnManager.isEmpty()) {
+		if (!TurnManager.actionQueue.peek() !== root.getCurrentSession().getTurnType()) {
 			this._processMode(FreeAreaMode.TURNEND);
 		}
 		else {
 			this._processMode(FreeAreaMode.MAIN);
 		}
-	}
+	};
 
 	FreeAreaScene._processMode = function(mode) {
 		if (mode === FreeAreaMode.TURNSTART) {
@@ -208,9 +220,11 @@ var TurnManager = {
 		}
 		else if (mode === FreeAreaMode.TURNEND) {
 			if (this._turnChangeEnd.enterTurnChangeCycle() === EnterResult.NOTENTER) {
+				root.log("turn ended");
 				this._processMode(FreeAreaMode.TURNSTART);
 			}
 			else {
+				root.log(mode);
 				this.changeCycleMode(mode);
 			}
 		}
@@ -221,12 +235,12 @@ var TurnManager = {
 			
 			this.changeCycleMode(mode);
 		}
-	}
+	};
 
 	TurnChangeEnd._startNextTurn = function() {
 		if (TurnManager.isEmpty()) {
 			root.getCurrentSession().setTurnType(TurnType.PLAYER);
-			this._checkActorList();
+			this._checkAllActors();
 			TurnManager.resetCurrentActionCounts();
 			//TurnManager.initializeOrderings();
 		}
@@ -234,8 +248,43 @@ var TurnManager = {
 			root.getCurrentSession().setTurnType(TurnManager.peek());
 		}
 	};
+	
+	TurnChangeEnd._checkActor = function(unit) {
+		this._removeWaitState(unit);
+		unit = FusionControl.getFusionChild(unit);
+		if (unit !== null)
+			this._removeWaitState(unit);
+	};
+	
+	TurnChangeEnd._checkAllActors = function() {
+		var pl = PlayerList.getSortieList();
+		var el = EnemyList.getAliveList();
+		var al = AllyList.getAliveList();
+		var unit, i;
+		var pCount = pl.getCount();
+		var eCount = el.getCount();
+		var aCount = al.getCount();
+		var trueCount = Math.max(pCount, eCount, aCount);
+		
+		for (i = 0; i < trueCount; i++) {
+			if (i < pCount) {
+				unit = pl.getData(i);
+				this._checkActor(unit);
+			}
+			
+			if (i < eCount) {
+				unit = el.getData(i);
+				this._checkActor(unit);
+			}
+			
+			if (i < aCount) {
+				unit = al.getData(i);
+				this._checkActor(unit);
+			}
+		}
+	};
 
-	PlayerTurn._checkAutoEnd = function() {
+	PlayerTurn._checkAutoTurnEnd = function() {
 		var i, unit;
 		var isTurnEnd = true;
 		var list = PlayerList.getSortieList();
@@ -257,7 +306,7 @@ var TurnManager = {
 			return false;
 		}*/
 		
-		if (TurnManager.actionQueue.peek() !== TurnType.PLAYER) {
+		if (TurnManager.peek() !== TurnType.PLAYER) {
 			TurnControl.turnEnd();
 			return true;
 		}
@@ -285,7 +334,8 @@ var TurnManager = {
 
 	UnitWaitFlowEntry._completeMemberData = function(playerTurn) { //note: this also can be applied to enemy turns too.
 		var event;
-		var unit = playerTurn.getTargetUnit();
+		//root.log(playerTurn);
+		var unit = playerTurn.getTurnTargetUnit();
 		
 		unit.setMostResentMov(0);
 		
@@ -293,6 +343,7 @@ var TurnManager = {
 			unit.setWait(true);
 			TurnManager.pop();
 			TurnManager.incrementActionCount();
+			root.log(TurnManager.actionQueue._queue);
 		}
 		
 		// Get a wait place event from the unit current position.
@@ -380,7 +431,7 @@ var TurnManager = {
 		}
 		
 		return MoveResult.CONTINUE;
-	}
+	};
 
 	EnemyTurn._checkNextOrderUnit = function() {
 		var i, unit;
@@ -402,7 +453,7 @@ var TurnManager = {
 		}
 		
 		return null;
-	},
+	};
 
 	QuickItemUse.mainAction = function() {
 		var targetUnit = this._itemUseParent.getItemTargetInfo().targetUnit;
@@ -461,34 +512,34 @@ var TurnManager = {
 		}
 		
 		return MoveResult.CONTINUE;
-	}
+	};
 
-	MoveCommand.TurnEnd.openCommand = function() {
+	MapCommand.TurnEnd.openCommand = function() {
 		if (root.getBaseScene() === SceneType.FREE){
 			this._saveCursor();
 		}
 		TurnManager.playerStandby();
 		TurnControl.turnEnd();
-	}
+	};
 
 	AllUnitList.getBerserkUnits = function(list) {
 		var funcCondition = function(unit) {
 			return (StateControl.isBadStateOption(unit, BadStateOption.BERSERK) || StateControl.isBadStateOption(unit, BadStateOption.AUTO));
 		};
 		return this.getList(list, funcCondition);
-	},
+	};
 
 	PlayerList.getBerserkUnits = function() {
 		return AllUnitList.getBerserkUnits(this.getMainList());
-	},
+	};
 
 	EnemyList.getBerserkUnits = function() {
 		return AllUnitList.getBerserkUnits(this.getMainList());
-	},
+	};
 
 	AllyList.getBerserkUnits = function() {
 		return AllUnitList.getBerserkUnits(this.getMainList());
-	},
+	};
 
 	BerserkFlowEntry._isBerserkTurn = function() {
 		var turnType = root.getCurrentSession().getTurnType();
@@ -505,7 +556,7 @@ var TurnManager = {
 		if (count !== null && count !== undefined && count > 0)
 			return true;
 		return false;
-	},
+	};
 
 	//start the berserk turn if all controllable units have moved/acted and the only actionable units left are the berserk units.
 
@@ -516,7 +567,7 @@ var TurnManager = {
 		count = list.getCount();
 		
 		for (i = 0; i < count; i++) {
-			if (StateControl.isTargetControllable(list.getData(i))
+			if (StateControl.isTargetControllable(list.getData(i)))
 				return true;
 		}
 		
@@ -534,8 +585,6 @@ var TurnManager = {
 		if (passive.getHp() === 0) {
 			// If this deactivation processing is done at the time of dead setting (DamageControl.setDeathState), the state etc.,
 			// cannot be specified in the condition of the dead event, so execute with this method. 
-			StateControl.arrangeState(passive, null, IncreaseType.ALLRELEASE);
-			MetamorphozeControl.clearMetamorphoze(passive);
 			if (currentTurnType === passive.unitSelf.getTurnType()) {
 				TurnManager.popAction();
 			}
@@ -565,7 +614,7 @@ var TurnManager = {
 								if (TurnManager.getOrderCount(passive.unitSelf.getTurnType()) < orderedList.getCount()) {
 									for (ind = TurnManager.getOrderCount(passive.unitSelf.getTurnType()); ind < Math.min(orderedList.getCount(), ind + fCount); ind++) {
 										if (orderedList[ind] === passive.unitSelf) {
-											lastInd = passive.unitSelf.getTurnType(), ind - TurnManager.getOrderCount(passive.unitSelf.getTurnType()));
+											lastInd = ind - TurnManager.getOrderCount(passive.unitSelf.getTurnType());
 											break;
 											//TurnManager.removeXOccurance(passive.unitSelf.getTurnType(), ind - TurnManager.getOrderCount(passive.unitSelf.getTurnType()));
 										}
@@ -589,8 +638,9 @@ var TurnManager = {
 				}
 			}
 		}
-		
+		StateControl.arrangeState(passive, null, IncreaseType.ALLRELEASE);
+		MetamorphozeControl.clearMetamorphoze(passive);
 		AttackControl.setPreAttackObject(null);
 		BattlerChecker.setUnit(null, null);
 	}
-});
+})();

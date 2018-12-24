@@ -10,22 +10,24 @@
 }*/
 
 
-function FactionRatioObject(faction, unitCount, work = 0) {
+function FactionRatioObject(faction, unitCount, work) {
 	this.faction = faction;
 	this.unitCount = unitCount;
 	this.work = work;
-}
+};
 
-FactionRatioObject.prototype.clear() {
+/*FactionRatioObject.prototype.clear = function() {
 	this.faction = '';
 	this.unitCount = 0;
 	this.work = 0;
-}
+};*/
 
-FactionRatioObject.prototype = Object.create(FactionRatioObject.prototype);
-FactionRatioObject.prototype.constructor = FactionRatioObject;
+//FactionRatioObject.prototype = Object.create(FactionRatioObject.prototype);
+//FactionRatioObject.prototype.constructor = FactionRatioObject;
 
-const defaultOrder = [TurnType.PLAYER, TurnType.ENEMY, TurnType.ALLY];
+//root.log(TurnType.PLAYER);
+
+var defaultOrder = [TurnType.PLAYER, TurnType.ENEMY, TurnType.ALLY];
 
 var ActionQueue = defineObject(BaseObject,
 {
@@ -37,7 +39,7 @@ var ActionQueue = defineObject(BaseObject,
 		this._queue = [];
 		for (var i = 0; i < counts.length; i++) {
 			if (counts[i] !== null && counts[i] > 0) {
-				var army = new FactionRatioObject(defaultOrder[i], counts[i]);
+				var army = new FactionRatioObject(defaultOrder[i], counts[i], 0);
 				armies.push(army);
 				this._queue.push(army.faction);
 				armies[i].work++;
@@ -46,11 +48,17 @@ var ActionQueue = defineObject(BaseObject,
 		var ordered = armies.sort(function(c,d) {
 			return d.unitCount - c.unitCount;
 		});
-		console.log(ordered);
+		//root.log(ordered.length);
+		//root.log(counts);
 		var startIdx = this._queue.length;
-		var totalActions = ordered.reduce(function(accumulator, factionObj) {
+		root.log(startIdx);
+		/*var totalActions = ordered.reduce(function(accumulator, factionObj) {
 			return accumulator + factionObj.unitCount;
-		}, 0);
+		}, 0);*/
+		var totalActions = 0;
+		for (var m = 0; m < ordered.length; m++) {
+			totalActions += ordered[m].unitCount;
+		};
 		for (var j = startIdx; j < totalActions; j++) {
 			for (var k = 0; k < ordered.length-1; k++) {
 				if ((ordered[k].work + 1)/(ordered[k+1].work + 1) < ordered[k].unitCount/ordered[k+1].unitCount) {
@@ -63,7 +71,7 @@ var ActionQueue = defineObject(BaseObject,
 					ordered[k+1].work++;
 				}
 			}
-		}
+		};
 	},
 	
 	peek: function() {
@@ -71,7 +79,10 @@ var ActionQueue = defineObject(BaseObject,
 	},
 	
 	pop: function() {
-		return this._queue[0] ? this._queue.shift() : null;
+		root.log(this._queue[0]);
+		var popped = this._queue.shift();
+		//root.log(typeof(popped));
+		return popped;
 	},
 	
 	isEmpty: function() {
@@ -94,7 +105,7 @@ var ActionQueue = defineObject(BaseObject,
 	},
 	
 	factionStandby: function(tType) {
-		this._queue = this._queue.filter(a => a !== tType);
+		this._queue = this._queue.filter(function(a) { return a !== tType; });
 	},
 	
 	getTopFive: function() {
@@ -114,7 +125,7 @@ var ActionQueue = defineObject(BaseObject,
 		return [this._getActionableUnitsList(PlayerList.getSortieList()).getCount(), this._getActionableUnitsList(EnemyList.getAliveList()).getCount(), this._getActionableUnitsList(AllyList.getAliveList()).getCount()];
 	},
 	
-	_getActionableUnitsList(list) {
+	_getActionableUnitsList: function(list) {
 		var funcCondition = function(unit) {
 			return (!unit.isWait() && !unit.isInvisible());
 		}
@@ -123,7 +134,7 @@ var ActionQueue = defineObject(BaseObject,
 	
 	resetQueue: function() {
 		var _cts = this._getActionableCounts();
-		var armies = _cts.filter(o => o !== undefined && o > 0).map(function(au, i) {
+		var armies = _cts.filter(function(o) { return (o !== undefined && o > 0); }).map(function(au, i) {
 			if (au !== null && au > 0) {
 				return new FactionRatioObject(i,au,1);
 			};
