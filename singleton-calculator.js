@@ -1,8 +1,8 @@
 
 var AbilityCalculator = {
-	getPower: function(unit, weapon) {
+	getPower: function(unit, weapon, ammun) {
 		var pow;
-		
+		var ammunPow = ammun ? ammun.custom.might : 0;
 		if (Miscellaneous.isPhysicsBattle(weapon)) {
 			// Physical attack or Bow attack.
 			pow = RealBonus.getStr(unit);
@@ -13,20 +13,36 @@ var AbilityCalculator = {
 		}
 		
 		// Atk formula. Weapon pow + (Pow or Mag)
-		return pow + weapon.getPow();
+		return pow + weapon.getPow() + ammunPow;
 	},
 	
-	getHit: function(unit, weapon) {
+	getHit: function(unit, weapon, ammun) {
 		// Hit rate formula. Weapon hit rate + (Ski * 3)
-		return weapon.getHit() + (RealBonus.getSki(unit) * 3);
+		var ammunBonus = ammun ? ammun.custom.hit : 0;
+		return weapon.getHit() + ammunBonus + (RealBonus.getSki(unit) * 2);
 	},
 	
-	getAvoid: function(unit) {
-		var avoid, terrain;
+	getShieldAccuracy: function(unit, shield) {
+		//Shield accuracy formula. Shield hit rate + (Skill * 2) + Pavise bonus;
+		//if SkillControl.isCustomSkillInvoked Pavise then add 18
+		var bonus = 0;
+		if (SkillControl.getPossessionCustomSkill(unit, 'pavise')
+			bonus = 18;
+		return shield.custom.hit + (RealBonus.getSki(unit) * 2) + bonus;
+	},
+	
+	getAvoid: function(unit, shield) {
+		var avoid, terrain, weight;
 		var cls = unit.getClass();
+		if (shield !== null) {
+			weight = shield.custom.weight;
+		}
+		else {
+			weight = 0;
+		}
 		
 		// Avoid is (Spd * 2)
-		avoid = RealBonus.getSpd(unit) * 2;
+		avoid = RealBonus.getSpd(unit) * 2 - weight;
 		
 		// If class type gains terrain bonus, add the avoid rate of terrain.
 		if (cls.getClassType().isTerrainBonusEnabled()) {
@@ -39,9 +55,10 @@ var AbilityCalculator = {
 		return avoid;
 	},
 	
-	getCritical: function(unit, weapon) {
+	getCritical: function(unit, weapon, ammun) {
 		// Critical rate formula. Ski + Weapon critical rate
-		return RealBonus.getSki(unit) + weapon.getCritical();
+		var ammunBonus = ammun ? ammun.custom.critical : 0;
+		return RealBonus.getSki(unit) + ammunBonus + weapon.getCritical();
 	},
 	
 	getCriticalAvoid: function(unit) {
@@ -49,8 +66,8 @@ var AbilityCalculator = {
 		return RealBonus.getLuk(unit);
 	},
 	
-	getAgility: function(unit, weapon) {
-		var agi, value, param;
+	getAgility: function(unit, weapon, shield) {
+		var agi, value, param, shVal;
 		var spd = RealBonus.getSpd(unit);
 		
 		// Normally, agility is identical with spd.
@@ -58,12 +75,13 @@ var AbilityCalculator = {
 		
 		// If a weapon is not specified or the weight is not included, agility doesn't change.
 		if (weapon === null || !DataConfig.isItemWeightDisplayable()) {
-			return agi;
+			shVal = shield ? shield.weight : 0;
+			return agi - shVal;
 		}
 		
 		// If bld is enabled, decide with bld. Otherwise, decide with pow (mag).
 		if (DataConfig.isBuildDisplayable()) {
-			param = ParamBonus.getBld(unit);
+			param = Math.round(ParamBonus.getBld(unit)/2);
 		}
 		else {
 			if (Miscellaneous.isPhysicsBattle(weapon)) {
@@ -74,7 +92,10 @@ var AbilityCalculator = {
 			}
 		}
 		
-		value = weapon.getWeight() - param;
+		//param/2 
+		var shVal = ItemControl.isShield(shield) ? shield.weight : 0;
+		
+		value = (weapon.getWeight() + shVal) - param;
 		if (value > 0) {
 			// If a parameter is lower than the weight, lower the agility according to the difference.
 			agi -= value;
@@ -85,14 +106,14 @@ var AbilityCalculator = {
 };
 
 var DamageCalculator = {
-	calculateDamage: function(active, passive, weapon, isCritical, activeTotalStatus, passiveTotalStatus, trueHitValue) {
+	calculateDamage: function(active, passive, weapon, ammun, isCritical, activeTotalStatus, passiveTotalStatus, trueHitValue) {
 		var pow, def, damage;
 		
 		if (this.isHpMinimum(active, passive, weapon, isCritical, trueHitValue)) {
 			return -1;
 		}
 		
-		pow = this.calculateAttackPower(active, passive, weapon, isCritical, activeTotalStatus, trueHitValue);
+		pow = this.calculateAttackPower(active, passive, weapon, ammun, isCritical, activeTotalStatus, trueHitValue);
 		def = this.calculateDefense(active, passive, weapon, isCritical, passiveTotalStatus, trueHitValue);
 		
 		damage = pow - def;
@@ -109,8 +130,9 @@ var DamageCalculator = {
 		return this.validValue(active, passive, weapon, damage);
 	},
 	
-	calculateAttackPower: function(active, passive, weapon, isCritical, totalStatus, trueHitValue) {
-		var pow = AbilityCalculator.getPower(active, weapon) + CompatibleCalculator.getPower(active, passive, weapon) + SupportCalculator.getPower(totalStatus);
+	calculateAttackPower: function(active, passive, weapon, ammun, isCritical, totalStatus, trueHitValue) {
+		var apow = ammun ? ammun.custom.might : 0;
+		var pow = AbilityCalculator.getPower(active, weapon) + CompatibleCalculator.getPower(active, passive, weapon) + SupportCalculator.getPower(totalStatus) + apow;
 		
 		if (this.isEffective(active, passive, weapon, isCritical, trueHitValue)) {
 			pow = Math.floor(pow * this.getEffectiveFactor());
@@ -120,7 +142,7 @@ var DamageCalculator = {
 	},
 	
 	calculateDefense: function(active, passive, weapon, isCritical, totalStatus, trueHitValue) {
-		var def;
+		var def, secDef;
 		
 		if (this.isNoGuard(active, passive, weapon, isCritical, trueHitValue)) {
 			return 0;
@@ -234,7 +256,19 @@ var DamageCalculator = {
 
 var HitCalculator = {
 	calculateHit: function(active, passive, weapon, activeTotalStatus, passiveTotalStatus) {
-		var hit, avoid, percent;
+		var hit, avoid, percent, ammun, shield;
+		
+		if (ItemControl.isRangedWeapon(weapon) && ItemControl.isMatchingAmmo(weapon, active.custom.equipment.secondary)) {
+			ammun = active.custom.equipment.secondary;
+		}
+		else {
+			ammun = null;
+		}
+		
+		if (ItemControl.isShield(passive.custom.equipment.secondary))
+			shield = passive.custom.equipment.secondary;
+		else
+			shield = null;
 		
 		if (root.isAbsoluteHit()) {
 			if (passive.isImmortal()) {
@@ -244,20 +278,21 @@ var HitCalculator = {
 			return 100;
 		}
 		
-		hit = this.calculateSingleHit(active, passive, weapon, activeTotalStatus);
-		avoid = this.calculateAvoid(active, passive, weapon, passiveTotalStatus);
+		hit = this.calculateSingleHit(active, passive, weapon, ammun, activeTotalStatus);
+		hit = Breaker.checkavoid(active, passive, weapon, hit);
+		avoid = this.calculateAvoid(active, passive, weapon, shield, passiveTotalStatus);
 		
 		percent = hit - avoid;
 		
 		return this.validValue(active, passive, weapon, percent);
 	},
 	
-	calculateSingleHit: function(active, passive, weapon, totalStatus) {
-		return AbilityCalculator.getHit(active, weapon) + CompatibleCalculator.getHit(active, passive, weapon) + SupportCalculator.getHit(totalStatus);
+	calculateSingleHit: function(active, passive, weapon, ammun, totalStatus) {
+		return AbilityCalculator.getHit(active, weapon, ammun) + CompatibleCalculator.getHit(active, passive, weapon) + SupportCalculator.getHit(totalStatus);
 	},
 	
-	calculateAvoid: function(active, passive, weapon, totalStatus) {
-		return AbilityCalculator.getAvoid(passive) + CompatibleCalculator.getAvoid(passive, active, ItemControl.getEquippedWeapon(passive)) + SupportCalculator.getAvoid(totalStatus);
+	calculateAvoid: function(active, passive, weapon, shield, totalStatus) {
+		return AbilityCalculator.getAvoid(passive, shield) + CompatibleCalculator.getAvoid(passive, active, ItemControl.getEquippedWeapon(passive)) + SupportCalculator.getAvoid(totalStatus);
 	},
 	
 	validValue: function(active, passive, weapon, percent) {
@@ -277,8 +312,9 @@ var HitCalculator = {
 };
 
 var CriticalCalculator = {
-	calculateCritical: function(active, passive, weapon, activeTotalStatus, passiveTotalStatus) {
+	calculateCritical: function(active, passive, weapon, ammun, activeTotalStatus, passiveTotalStatus) {
 		var critical, avoid, percent;
+		var acrit = ammun ? ammun.custom.critical : 0;
 		
 		if (!this.isCritical(active, passive, weapon)) {
 			return 0;
@@ -287,13 +323,13 @@ var CriticalCalculator = {
 		critical = this.calculateSingleCritical(active, passive, weapon, activeTotalStatus);
 		avoid = this.calculateCriticalAvoid(active, passive, weapon, passiveTotalStatus);
 		
-		percent = critical - avoid;
+		percent = (critical + acrit) - avoid;
 		
 		return this.validValue(active, passive, weapon, percent);
 	},
 	
-	calculateSingleCritical: function(active, passive, weapon, totalStatus) {
-		return AbilityCalculator.getCritical(active, weapon) + CompatibleCalculator.getCritical(active, passive, weapon) + SupportCalculator.getCritical(totalStatus);
+	calculateSingleCritical: function(active, passive, weapon, ammun, totalStatus) {
+		return AbilityCalculator.getCritical(active, weapon, ammun) + CompatibleCalculator.getCritical(active, passive, weapon) + SupportCalculator.getCritical(totalStatus);
 	},
 	
 	calculateCriticalAvoid: function(active, passive, weapon, totalStatus) {
@@ -326,17 +362,18 @@ var Calculator = {
 		return weapon.getAttackCount();
 	},
 	
-	calculateRoundCount: function(active, passive, weapon) {
+	calculateRoundCount: function(active, passive, weapon, shield) {
 		var activeAgi;
 		var passiveAgi;
 		var value;
+		//var shValue = shield ? shield.weight : 0;
 		
 		if (!this.isRoundAttackAllowed(active, passive)) {
 			return weapon.custom.roundCounter ? weapon.custom.roundCounter : 1;
 		}
 		
-		activeAgi = AbilityCalculator.getAgility(active, weapon);
-		passiveAgi = AbilityCalculator.getAgility(passive, ItemControl.getEquippedWeapon(passive));
+		activeAgi = AbilityCalculator.getAgility(active, weapon, shield);
+		passiveAgi = AbilityCalculator.getAgility(passive, ItemControl.getEquippedWeapon(passive), ItemControl.getEquippedSecondary(shield));
 		value = this.getDifference();
 		
 		if (!weapon.custom.roundCounter) {
