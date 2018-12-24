@@ -563,7 +563,7 @@ var TurnManager = {
 									orderedList = AllyList.getAliveList();
 								}
 								if (TurnManager.getOrderCount(passive.unitSelf.getTurnType()) < orderedList.getCount()) {
-									for (ind = TurnManager.getOrderCount(passive.unitSelf.getTurnType()); ind < Math.Min(orderedList.getCount(), ind + fCount); ind++) {
+									for (ind = TurnManager.getOrderCount(passive.unitSelf.getTurnType()); ind < Math.min(orderedList.getCount(), ind + fCount); ind++) {
 										if (orderedList[ind] === passive.unitSelf) {
 											lastInd = passive.unitSelf.getTurnType(), ind - TurnManager.getOrderCount(passive.unitSelf.getTurnType()));
 											break;
