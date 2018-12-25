@@ -134,7 +134,7 @@ var TurnManager = {
 		var startEndType;
 		
 		// Count a turn number if the player turn starts up.
-		if (TurnManager.isEmpty()) {
+		if (TurnManager.isEmpty() || root.getCurrentSession().getTurnCount() === 0) {
 			root.getCurrentSession().setTurnCount(root.getCurrentSession().getTurnCount() + 1);
 			
 			// Count a relative turn.
@@ -172,6 +172,7 @@ var TurnManager = {
 			straightFlow.pushFlowEntry(MetamorphozeCancelFlowEntry);
 		}
 		if (root.getCurrentSession().getTurnType() === TurnType.PLAYER && !StateControl.CanControlAUnit()) //note: does not actually create the berserk flow turn if there are no berserked units
+			//root.log("berserk turn");
 			straightFlow.pushFlowEntry(BerserkFlowEntry);
 	};
 
@@ -289,6 +290,7 @@ var TurnManager = {
 		var isTurnEnd = true;
 		var list = PlayerList.getSortieList();
 		var count = list.getCount();
+		var uncontrolCount = 0;
 		
 		// Don't let the turn change occur at the same time when selecting the auto turn end on the config screen.
 		// There is also an intention that doesn't let the turn end at the same time when the alive is 0 at the battle.
@@ -315,6 +317,7 @@ var TurnManager = {
 			unit = list.getData(i);
 			// If the all players cannot act due to the states, ending the turn is needed, so decide with the following code.
 			if (!StateControl.isTargetControllable(unit)) { //might change it depending on how we handle berserked units.
+				uncontrolCount++;
 				continue;
 			}
 			
@@ -326,6 +329,9 @@ var TurnManager = {
 		
 		if (isTurnEnd) {
 			this._isPlayerActioned = false;
+			if (uncontrolCount > 0) {
+				TurnManager.pop();
+			}
 			TurnControl.turnEnd();
 		}
 		
@@ -359,8 +365,8 @@ var TurnManager = {
 		if (this._dynamicAnime.moveDynamicAnime() !== MoveResult.CONTINUE) {
 			this._targetUnit.setReactionTurnCount(this._skill.getSkillValue());
 			this._targetUnit.setWait(false);
-			var ttp = this._targetUnit.getTurnType();
-			TurnManager.actionQueue.placeOnTop(this._targetUnit.getTurnType());
+			var ttp = this._targetUnit.getUnitType();
+			TurnManager.actionQueue.placeOnTop(this._targetUnit.getUnitType());
 			//TurnManager.orderings[ttp].actionCounter = TurnManager.orderings[ttp].actionCounter - 1 >= 0 ? TurnManager.orderings[tt].actionCounter - 1 : 0;
 			// The following code is for the enemy AI.
 			this._targetUnit.setOrderMark(OrderMarkType.FREE);
@@ -459,7 +465,7 @@ var TurnManager = {
 		var targetUnit = this._itemUseParent.getItemTargetInfo().targetUnit;
 		
 		targetUnit.setWait(false);
-		TurnManager.actionQueue.placeOnTop(targetUnit.getTurnType());
+		TurnManager.actionQueue.placeOnTop(targetUnit.getUnitType());
 		
 		targetUnit.setOrderMark(OrderMarkType.FREE);
 	};
@@ -471,7 +477,7 @@ var TurnManager = {
 			targetUnit = this._posSelector.getSelectorTarget(true);
 			targetUnit.setWait(false);
 			targetUnit.setOrderMark(OrderMarkType.FREE);
-			TurnManager.actionQueue.placeOnTop(targetUnit.getTurnType());
+			TurnManager.actionQueue.placeOnTop(targetUnit.getUnitType());
 			if (this._exp > 0) {
 				this._changeExp();
 			}
@@ -495,6 +501,7 @@ var TurnManager = {
 				targetUnit = PosChecker.getUnitFromPos(x,y);
 				if (targetUnit !== null) {
 					targetUnit.setWait(false);
+					root.log("dance");
 					targetUnit.setOrderMark(OrderMarkType.FREE);
 				}
 			}
@@ -530,6 +537,7 @@ var TurnManager = {
 	};
 
 	PlayerList.getBerserkUnits = function() {
+		root.log("check for berserk");
 		return AllUnitList.getBerserkUnits(this.getMainList());
 	};
 
@@ -567,7 +575,8 @@ var TurnManager = {
 		count = list.getCount();
 		
 		for (i = 0; i < count; i++) {
-			if (StateControl.isTargetControllable(list.getData(i)))
+			if (StateControl.isTargetControllable(list.getData(i)) && !list.getData(i).isWait())
+				root.log("controllable");
 				return true;
 		}
 		
@@ -583,48 +592,56 @@ var TurnManager = {
 		}
 		
 		if (passive.getHp() === 0) {
+			root.log(passive.getUnitType());
 			// If this deactivation processing is done at the time of dead setting (DamageControl.setDeathState), the state etc.,
 			// cannot be specified in the condition of the dead event, so execute with this method. 
-			if (currentTurnType === passive.unitSelf.getTurnType()) {
-				TurnManager.popAction();
+			if (currentTurnType === passive.getUnitType()) {
+				TurnManager.pop();
 			}
 			else {
-				if (!passive.unitSelf.isWait()) {
+				if (!passive.isWait()) {
 					switch (currentTurnType) {
 						case TurnType.PLAYER:
-							TurnManager.removeLastInstance(TurnType.PLAYER);
+							TurnManager.actionQueue.removeLastInstance(passive.getUnitType());
 							break;
 						default:
-							var fCount = TurnManager.getTopFive().reduce(function(accum, t) {
+							var topFive = TurnManager.getTopFive();
+							var fCount = 0;
+							for (var uo = 0; uo < topFive.length; uo++) {
+								if (uo === currentTurnType) {
+									fCount++;
+								}
+							};
+							/*var fCount = TurnManager.getTopFive().reduce(function(accum, t) {
 								if (t === currentTurnType) {
 									return accum + 1;
 								}
 								else {
 									return accum;
 								}
-							}, 0);
+							}, 0);*/
 							if (fCount > 0) {
 								var orderedList, ind, lastInd;
-								if (passive.unitSelf.getTurnType() === TurnType.ENEMY) {
+								if (passive.getUnitType() === TurnType.ENEMY) {
 									orderedList = EnemyList.getAliveList();
 								}
 								else {
 									orderedList = AllyList.getAliveList();
 								}
-								if (TurnManager.getOrderCount(passive.unitSelf.getTurnType()) < orderedList.getCount()) {
-									for (ind = TurnManager.getOrderCount(passive.unitSelf.getTurnType()); ind < Math.min(orderedList.getCount(), ind + fCount); ind++) {
+								if (TurnManager.getOrderCount(passive.getUnitType()) < orderedList.getCount()) {
+									for (ind = TurnManager.getOrderCount(passive.getUnitType()); ind < Math.min(orderedList.getCount(), ind + fCount); ind++) {
 										if (orderedList[ind] === passive.unitSelf) {
-											lastInd = ind - TurnManager.getOrderCount(passive.unitSelf.getTurnType());
+											lastInd = ind - TurnManager.getOrderCount(passive.getUnitType());
 											break;
-											//TurnManager.removeXOccurance(passive.unitSelf.getTurnType(), ind - TurnManager.getOrderCount(passive.unitSelf.getTurnType()));
+											//TurnManager.removeXOccurance(passive.unitSelf.getUnitType(), ind - TurnManager.getOrderCount(passive.unitSelf.getUnitType()));
 										}
 									}
 								}
 								if (lastInd !== null && lastInd !== undefined) {
-									TurnManager.actionQueue.removeXOccurance(passive.unitSelf.getTurnType(), ind - TurnManager.getOrderCount(passive.unitSelf.getTurnType()));
+									TurnManager.actionQueue.removeXOccurance(passive.getUnitType(), ind - TurnManager.getOrderCount(passive.getUnitType()));
 								}
 								else {
-									TurnManager.actionQueue.removeLastInstance(passive.unitSelf.getTurnType());
+									TurnManager.actionQueue.removeLastInstance(passive.getUnitType());
 								}
 							}
 							else {

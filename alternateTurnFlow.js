@@ -79,7 +79,7 @@ var ActionQueue = defineObject(BaseObject,
 	},
 	
 	pop: function() {
-		root.log(this._queue[0]);
+		//root.log(this._queue[0]);
 		var popped = this._queue.shift();
 		//root.log(typeof(popped));
 		return popped;
