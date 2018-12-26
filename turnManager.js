@@ -171,9 +171,9 @@ var TurnManager = {
 			straightFlow.pushFlowEntry(RecoveryAllFlowEntry);
 			straightFlow.pushFlowEntry(MetamorphozeCancelFlowEntry);
 		}
-		if (root.getCurrentSession().getTurnType() === TurnType.PLAYER && !StateControl.CanControlAUnit()) //note: does not actually create the berserk flow turn if there are no berserked units
-			//root.log("berserk turn");
-			straightFlow.pushFlowEntry(BerserkFlowEntry);
+		//if (root.getCurrentSession().getTurnType() === TurnType.PLAYER && !StateControl.CanControlAUnit()) //note: does not actually create the berserk flow turn if there are no berserked units
+		root.log("berserk turn"); //one berserk unit moves when this is uncommented, but if it is commented, no berserk units move.
+		straightFlow.pushFlowEntry(BerserkFlowEntry);
 	};
 
 	TurnChangeStart._checkStateTurn = function() {
@@ -316,15 +316,20 @@ var TurnManager = {
 		for (i = 0; i < count; i++) {
 			unit = list.getData(i);
 			// If the all players cannot act due to the states, ending the turn is needed, so decide with the following code.
-			if (!StateControl.isTargetControllable(unit)) { //might change it depending on how we handle berserked units.
+			if (StateControl.isTargetControllable(unit) && !unit.isWait()) {
+				isTurnEnd = false;
+				break;
+			}
+			
+			else if (!StateControl.isTargetControllable(unit) && !unit.isWait()) {
 				uncontrolCount++;
 				continue;
 			}
 			
-			if (!unit.isWait()) {
+			/*else if (!unit.isWait()) {
 				isTurnEnd = false;
 				break;
-			}
+			}*/
 		}
 		
 		if (isTurnEnd) {
@@ -337,6 +342,45 @@ var TurnManager = {
 		
 		return isTurnEnd;
 	};
+	
+	var PlayerBerserkTurn = defineObject(EnemyTurn,
+	{
+		_moveEndEnemyTurn: function() {
+			var i, unit;
+			var list = PlayerList.getSortieList();
+			var count = list.getCount();
+			
+			for (i = 0; i < count; i++) {
+				unit = list.getData(i);
+				if (StateControl.isBadStateOption(unit, BadStateOption.BERSERK)) {
+					unit.setWait(false);
+				}
+				else if (StateControl.isBadStateOption(unit, BadStateOption.AUTO)) {
+					unit.setWait(false);
+				}
+			}
+			
+			return MoveResult.END;
+		},
+		
+		_isOrderAllowed: function(unit) {
+			root.log("isOrderAllowed called");
+			if (!EnemyTurn._isOrderAllowed.call(this, unit)) {
+				root.log("not allowed");
+				return false;
+			}
+			
+			if (StateControl.isBadStateOption(unit, BadStateOption.BERSERK)) {
+				return true;
+			}
+			
+			if (StateControl.isBadStateOption(unit, BadStateOption.AUTO)) {
+				return true;
+			}
+			
+			return false;
+		}
+	});
 
 	UnitWaitFlowEntry._completeMemberData = function(playerTurn) { //note: this also can be applied to enemy turns too.
 		var event;
@@ -551,19 +595,35 @@ var TurnManager = {
 
 	BerserkFlowEntry._isBerserkTurn = function() {
 		var turnType = root.getCurrentSession().getTurnType();
-		var list;
+		var list, count, unit;
+		var berserkCount = 0;
+		var actableCount = 0;
 		
-		if (turnType === TurnType.PLAYER)
-			list = PlayerList.getBerserkUnits();
-		else if (turnType === TurnType.ENEMY)
-			list = EnemyList.getBerserkUnits();
-		else
-			list = AllyList.getBerserkUnits();
+		switch(turnType) {
+			case TurnType.PLAYER:
+				list = PlayerList.getSortieList();
+				break;
+			case TurnType.ENEMY:
+				list = EnemyList.getAliveList();
+				break;
+			default:
+				list = AllyList.getAliveList();
+				break;
+		}
 		
-		var count = list.getCount();
-		if (count !== null && count !== undefined && count > 0)
-			return true;
-		return false;
+		count = list.getCount();
+		for (var i = 0; i < count; i++) {
+			unit = list.getData(i);
+			if (StateControl.isTargetBerserk(unit)) {
+				berserkCount++;
+				root.log(berserkCount);
+			}
+			else if (!StateControl.isTargetStopped(unit)) {
+				actableCount++;
+			}
+		}
+		
+		return berserkCount > 0 && actableCount === 0;
 	};
 
 	//start the berserk turn if all controllable units have moved/acted and the only actionable units left are the berserk units.
@@ -578,6 +638,38 @@ var TurnManager = {
 			if (StateControl.isTargetControllable(list.getData(i)) && !list.getData(i).isWait())
 				root.log("controllable");
 				return true;
+		}
+		
+		return false;
+	};
+	
+	StateControl.isTargetBerserk = function(unit) {
+		var i, state, option;
+		var list = unit.getTurnStateList();
+		var count = list.getCount();
+		
+		for (i = 0; i < count; i++) {
+			state = list.getData(i).getState();
+			option = state.getBadStateOption();
+			if (option === BadStateOption.BERSERK || option === BadStateOption.AUTO) {
+				return true;
+			}
+		}
+		
+		return false;
+	};
+	
+	StateControl.isTargetStopped = function(unit) {
+		var i, state, option;
+		var list = unit.getTurnStateList();
+		var count = list.getCount();
+		
+		for (i = 0; i < count; i++) {
+			state = list.getData(i).getState();
+			option = state.getBadStateOption();
+			if (option === BadStateOption.NOACTION) {
+				return true;
+			}
 		}
 		
 		return false;
