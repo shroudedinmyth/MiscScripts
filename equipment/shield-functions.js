@@ -20,28 +20,22 @@
 
 (function () {
 	
-	AbilityCalculator.getShieldAccuracy = function(unit, shield) {
-		var paviseBonus = 0;
-		var paviseSkill = SkillControl.getPossessionCustomSkill(unit,'pavise');
-		
-		if (paviseSkill !== null) {
-			paviseBonus = paviseSkill.custom.blockValue;
-		}
-		
-		return shield.custom.accuracy + Math.ceil((RealBonus.getSki(unit) * 1.5)) + paviseBonus;
-	};
-	
 	var alias1 = AbilityCalculator.getAgility;
 	
 	AbilityCalculator.getAgility = function(unit, weapon) {
-		var agi, value, buildParam, statParam, param;
+		var agi, value, buildParam, statParam, param, secondaryWeight;
 		var spd = RealBonus.getSpd(unit);
 		var secondary = ItemControl.getEquippedSecondary(unit);
-		var secondaryWeight = secondary !== null ? secondary.getWeight() : 0;
-		
+		if (secondary !== undefined && secondary !== null && secondary.getCustomKeyword() !== "Shield"){
+			root.log(unit.getName());
+			secondaryWeight = secondary.getWeight();
+		}
+		else {
+			return alias1.call(this, unit, weapon);
+		}
 		agi = spd;
 		
-		if ((weapon === null && secondary === null) || !DataConfig.isItemWeightDisplayable()) {
+		if ((weapon === null && !secondaryWeight) || !DataConfig.isItemWeightDisplayable()) {
 			return agi;
 		}
 		
@@ -83,34 +77,22 @@
 		return avoid;
 	};
 	
-	var alias3 = AbilityCalculator.getHit;
+	//var alias3 = AbilityCalculator.getHit;
 	
-	AbilityCalculator.getHit = function(unit, weapon) {
+	/*AbilityCalculator.getHit = function(unit, weapon) {
 		var secondaryBonus = 0;
 		if (weapon.getWeaponCategoryType() === WeaponCategoryType.SHOOT) {
 			var ammun = ItemControl.getEquippedSecondary(unit);
-			if (ammun !== null && ammun.getCustomKeyword() === "Ammunition") {
+			if (ammun !== null && typeof ammun !== 'undefined' && ammun.getCustomKeyword() === "Ammunition") {
 				secondaryBonus = ammun.custom.hit;
 			}
 		}
 		
 		return weapon.getHit() + secondaryBonus + (RealBonus.getSki(unit) * 2);
-	};
-	
-	ShieldAccuracyCalculator = {
-		calculateShieldAccuracy: function(active, passive, weapon, shield, activeTotalStatus, passiveTotalStatus) {
-			return this.calculateSingleBlock(active, passive, weapon, shield, passiveTotalStatus);
-		},
-		
-		calculateSingleBlock: function(active, passive, weapon, shield, totalStatus) {
-			var compatible = CompatibleCalculator._getShieldCompatible(active, passive, weapon, shield);
-			var compatValue = compatible !== null ? compatible : 0;
-			return Math.max(AbilityCalculator.getShieldAccuracy(passive, shield) + SupportCalculator.getHit(totalStatus), compatValue);
-		}
-	};
+	};*/
 	
 	//for things like Ajax Shield, which blocks damage from bows/crossbows/ballistas 100% of the time
-	CompatibleCalculator._getShieldCompatible = function(active, passive, weapon, shield) {		
+	/*CompatibleCalculator._getShieldCompatible = function(active, passive, weapon, shield) {		
 		if (shield === null || weapon === null) {
 			return null;
 		}
@@ -120,47 +102,109 @@
 		}
 		
 		return null;
+	};*/
+	
+	var ShieldAccuracyCalculator = {
+		calculateShieldAccuracy: function(virtualPassive, shield, passiveTotalStatus) {
+			return this.calculateSingleBlock(virtualPassive, shield, passiveTotalStatus);
+		},
+		
+		calculateSingleBlock: function(virtualPassive, shield, totalStatus) {
+			//var compatible = CompatibleCalculator._getShieldCompatible(active, passive, weapon, shield);
+			//var compatValue = compatible !== null ? compatible : 0;
+			var result = AbilityCalculator.getShieldAccuracy(virtualPassive.unitSelf, shield) + SupportCalculator.getHit(totalStatus);
+			return result;
+		}
 	};
 	
-	var alias4 = AttackEvaluator.HitCritical.calculateDamage;
+	var alias4 = AttackEvaluator.HitCritical.evaluateAttackEntry;
 	
-	AttackEvaluator.HitCritical.calculateDamage = function(virtualActive, virtualPassive, attackEntry) {
-		var damage = alias4.call(this, virtualActive, virtualPassive, attackEntry);
+	AttackEvaluator.HitCritical.evaluateAttackEntry = function(virtualActive, virtualPassive, attackEntry) {
+		this._skill = SkillControl.checkAndPushSkill(virtualActive.unitSelf, virtualPassive.unitSelf, attackEntry, true, SkillType.TRUEHIT);
 		
-		var shield = shieldHandle.getShield(virtualPassive);
+		var shield = virtualPassive.secondary;
 		
-		if (shield !== null) { //if user has a shield
-			if (shieldHandle.canShieldBlock(virtualActive, shield)) { //if the shield can block the attack
-				var percent = ShieldAccuracyCalculator.calculateShieldAccuracy(virtualActive, virtualPassive, virtualActive.weapon, shield, virtualPassive.totalStatus); //get shield accuracy
+		if (ItemControl.isShield(shield)) {
+			attackEntry.isHit = this.isHit(virtualActive, virtualPassive, attackEntry);
+			if (!attackEntry.isHit) {
+				if (this._skill === null) {
+					return;
+				}
 				
-				if (Probability.getProbability(percent)) { //if it passes the probability check, ala an attack hit
-					var didBreak = false; //for now, always false, but set it to be if weapon.shieldBreaker !== null && weapon.shieldBreaker !== undefined
+				attackEntry.isHit = true;
+			}
+			
+			attackEntry.isCritical = this.isCritical(virtualActive, virtualPassive, attackEntry);
+			
+			if (shieldHandle.canShieldBlock(virtualActive, virtualPassive)) {
+				var percentage = ShieldAccuracyCalculator.calculateShieldAccuracy(virtualPassive, shield, virtualPassive.totalStatus);
+				
+				if (Probability.getProbability(percentage)) {
+					attackEntry.damagePassive = this.calculateReduceShieldDamage(virtualActive, virtualPassive, attackEntry, this._skill, shield);
 					
-					var isPhysical = Miscellaneous.isPhysicsBattle(virtualActive.weapon);
-					var elemental;
-					
-					if (virtualActive.weapon.getWeaponCategoryType() === WeaponCategoryType.SHOOT) {
-						elemental = virtualActive.secondary.custom.element;
-					}
-					else {
-						elemental = virtualActive.weapon.custom.element;
-					}
-					
-					damage = shieldHandle.damage(damage, shield, isPhysical, elemental);
-					ItemControl.decreaseItem(virtualPassive.unitSelf, shield);
-					
-					if (ItemControl.isWeaponBroken(shield)){
-						didBreak = true;
-					}
-					
-					if (didBreak) {
-						ItemControl.deleteItem(virtualPassive.unitSelf, shield);
-					}
-					
+					this._checkStateAttack(virtualActive, virtualPassive, attackEntry);
+				}
+				else {
+					attackEntry.damagePassive = this.calculateDamage(virtualActive, virtualPassive, attackEntry);
 				}
 			}
+			else {
+				attackEntry.damagePassive = this.calculateDamage(virtualActive, virtualPassive, attackEntry);
+			}
 		}
-		return DamageCalculator.validValue(virtualActive.unitSelf, virtualPassive.unitSelf, virtualActive.weapon, damage);
+		else {
+			alias4.call(this, virtualActive, virtualPassive, attackEntry);
+		}
+		
+	};
+	
+	AttackEvaluator.HitCritical.calculateReduceShieldDamage = function(virtualActive, virtualPassive, attackEntry, skill, shield) {
+		var trueHitValue = 0;
+		
+		if (this._skill !== null) {
+			trueHitValue = this._skill.getSkillValue();
+		}
+		if (DamageCalculator.isHpMinimum(virtualActive.unitSelf, virtualPassive.unitSelf, virtualActive.weapon, attackEntry.isCritical, trueHitValue)) {
+		// 現在HP-1をダメージにすることで、攻撃が当たれば相手のHPは1になる
+			return virtualPassive.hp - 1;
+		}
+
+		if (DamageCalculator.isFinish(virtualActive.unitSelf, virtualPassive.unitSelf, virtualActive.weapon, attackEntry.isCritical, trueHitValue)) {
+			return virtualPassive.hp;
+		}
+		
+		return DamageCalculator.calculateReduceShieldDamage(virtualActive.unitSelf, virtualPassive.unitSelf, virtualActive.weapon, virtualPassive.secondary, attackEntry.isCritical, virtualActive.totalStatus, virtualPassive.totalStatus, trueHitValue, skill);
+	};
+	
+	DamageCalculator.calculateReduceShieldDamage = function(active, passive, weapon, shield, isCritical, activeTotalStatus, passiveTotalStatus, trueHitValue, skill) {
+		var pow, def, damage;
+		
+		if (this.isHpMinimum(active, passive, weapon, isCritical, trueHitValue))
+			return -1;
+		
+		pow = this.calculateAttackPower(active, passive, weapon, isCritical, activeTotalStatus);
+		def = this.calculateDefense(active, passive, weapon, isCritical, passiveTotalStatus);
+		
+		if (Miscellaneous.isPhysicsBattle(weapon)) {
+			def += shield.custom.defBoost;
+		}
+		else {
+			def += shield.custom.resBoost;
+		}
+		
+		shieldHandle.handleShieldUse(passive, weapon, shield);
+		damage = pow - def;
+		if (this.isHalveAttack(active, passive, weapon, isCritical, trueHitValue)) {
+			if (!this.isHalveAttackBreak(active, passive, weapon, isCritical, trueHitValue)) {
+				damage = Math.floor(damage/2);
+			}
+		}
+		
+		if (this.isCritical(active, passive, weapon, isCritical, trueHitValue)) {
+			damage = Math.floor(damage * this.getCriticalFactor());
+		}
+		
+		return this.validValue(active, passive, weapon, damage);
 	};
 	
 	//note: Nearly all the functions can be used for accessories that reduce damage of some kind, ala Wind Ring or Djinn Ring. The functions are meant to check whether a shield/defensive accessory and the final damage calculation if it blocks.
@@ -169,38 +213,49 @@
 		getShield: function(virtualPassive) {
 			var shield = virtualPassive.secondary;
 			
-			if (shield !== null && shield.getCustomKeyword() === "Shield") {
+			if (shield !== null && shield !== undefined && shield.getCustomKeyword() === "Shield") {
 				return shield;
 			}
 			
 			return null;
 		},
 		
-		getGuardAccessory: function(virtualPassive) {
-			var guardAcc = virtualPassive.secondary;
+		/*getGuardAccessory: function(virtualPassive) {
+			var guardAcc = ItemControl.getEquippedSecondary(virtualPassive.unitSelf);
 			
-			if (guardAcc !== null && guardAcc.getCustomKeyword() === "Accessory") {
-				if (guardAcc.custom.accessoryType === AccessoryType.DEFENSE) {
-					return guardAcc;
+			if ((guardAcc !== null && typeof guardAcc !== 'undefined')) {
+				if (guardAcc.getCustomKeyword() === "Accessory") {
+					if (guardAcc.custom.accessoryType === AccessoryType.DEFENSE) {
+						return guardAcc;
+					}
 				}
 			}
 			
 			return null;
-		},
+		},*/
 		
-		canShieldBlock: function(virtualActive, shield) {
+		canShieldBlock: function(virtualActive, virtualPassive) {
 			var canBlock = true;
+			var weapon = virtualActive.weapon;
+			var shield = virtualPassive.secondary;
 			
-			if (!this.checkDamageType(virtualActive, shield) && !this.checkElementType(virtualActive, shield)) {
+			if (weapon === null || shield === null)
+				canBlock = false;
+
+			//where current bug is occurring
+			if (ItemControl.isItemBroken(shield)) {
 				canBlock = false;
 			}
 			
-			if (ItemControl.isWeaponBroken(shield)) {
+			if (weapon.custom.pierce === null && weapon.custom.pierce === undefined) {
 				canBlock = false;
 			}
 			
-			if (virtualActive.weapon.custom.pierce !== null && virtualActive.weapon.custom.pierce !== undefined) {
-				canBlock = false;
+			if (Miscellaneous.isPhysicsBattle(weapon)) {
+				canBlock = shield.custom.defBoost > 0;
+			}
+			else {
+				canBlock = shield.custom.resBoost > 0;
 			}
 			
 			return canBlock;
@@ -219,44 +274,34 @@
 			return request;
 		},
 		
-		checkElementType: function(virtualActive, shield) {
-			var request = false;
+		handleShieldUse: function(passive, weapon, shield) {
+			var result = true;
 			
-			if (Miscellaneous.isPhysicsBattle(virtualActive.weapon)) {
-				if (virtualActive.weapon.getWeaponCategoryType() === WeaponCategoryType.SHOOT) {
-					var ammoElement = virtualActive.secondary.custom.element; //should probably be a string value.
-					request = ( ammoElement !== null && shield.custom.elemDefs[ammoElement] > 0 );
+			var shieldBreak = false;
+			
+			var breaksShields = weapon.custom.shieldBreaker !== null && weapon.custom.shieldBreaker !== undefined;
+			
+			if (!breaksShields) {
+				var limit = shield.getLimit() - 1;
+				if (limit < 0)
+					limit = 0;
+				shield.setLimit(limit);
+				if (ItemControl.isItemBroken(shield)) {
+					ItemControl.deleteItem(shield);
+					shieldBreak = true;
+				}
+				else {
+					ItemControl.decreaseItem(passive, shield);
 				}
 			}
+			
 			else {
-				var weaponElement = virtualActive.weapon.custom.element;
-				request = ( weaponElement !== null && shield.custom.elemDefs[weaponElement] > 0 );
+				shield.setLimit(0);
+				ItemControl.deleteItem(shield);
+				shieldBreak = true;
 			}
 			
-			return request;
-		},
-		
-		/**
-		 * @param damage : number,
-		 * @param shield : Item,
-		 * @param isPhysical: bool,
-		 * @param elemental: string,
-		 * @returns {*}
-		 */
-		
-		damage: function(damage, shield, isPhysical, elemental) {
-			var elemReduce = 0;
-			if (elemental !== null) {
-				elemReduce = shield.custom.elemDefs[elemental];
-			}
-			if (isPhysical) {
-				damage -= (shield.custom.defBoost + elemReduce);
-			}
-			else {
-				damage -= (shield.custom.resBoost + elemReduce);
-			}
-			
-			return damage;
+			return shieldBreak;
 		}
 	}
 })();

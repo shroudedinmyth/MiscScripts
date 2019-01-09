@@ -216,10 +216,6 @@ var NormalAttackOrderBuilder = defineObject(BaseObject,
 		var weaponType;
 		var weapon = virtualActive.weapon;
 		var isItemDecrement = false;
-		var isAmmunDecrement = false;
-		var isShieldDecrement = false;
-		var ammmun = ItemControl.isAmmunition(virtualActive.secondary) ? virtualActive.secondary : null;
-		var shield = ItemControl.isShield(virtualPassive.secondary) ? virtualPassive.secondary : null;
 			
 		if (weapon === null) {
 			return;
@@ -231,12 +227,6 @@ var NormalAttackOrderBuilder = defineObject(BaseObject,
 			if (attackEntry.isHit) {
 				// Reduce due to hit.
 				isItemDecrement = true;
-				if (ammun) {
-					isAmmunDecrement = true;
-				}
-				if (attackEntry.isBlocked) {
-					isShieldDecrement = true;
-				}
 			}
 		}
 		else {
@@ -249,17 +239,6 @@ var NormalAttackOrderBuilder = defineObject(BaseObject,
 			
 			// Count the number of use of weapons.
 			virtualActive.weaponUseCount++;
-		}
-		
-		if (isAmmunDecrement) {
-			attackEntry.isAmmunDecrement = true;
-			
-			virtualActive.secondaryUseCount++;
-		}
-		
-		if (isShieldDecrement) {
-			attackEntry.isShieldDecrement = true;
-			virtualPassive.secondaryUseCount++;
 		}
 	},
 	
@@ -475,8 +454,7 @@ var VirtualAttackControl = {
 		virtualAttackUnit.unitSelf = unitSelf;
 		virtualAttackUnit.hp = unitSelf.getHp();
 		virtualAttackUnit.weapon = BattlerChecker.getRealBattleWeapon(unitSelf);
-		virtualAttackUnit.secondary = BattlerChecker.getRealBattleSecondary(unitSelf);
-		virtualAttackUnit.mountInfo = unitSelf.custom.mountInfo;
+		virtualAttackUnit.secondary = ItemControl.getEquippedSecondary(unitSelf);
 		virtualAttackUnit.isSrc = isSrc;
 		virtualAttackUnit.isCounterattack = attackInfo.isCounterattack;
 		virtualAttackUnit.stateArray = [];
@@ -496,6 +474,8 @@ var VirtualAttackControl = {
 		
 		this._calculateAttackAndRoundCount(virtualAttackUnit, isAttack, targetUnit);
 		
+		root.log(virtualAttackUnit.unitSelf.getName() + ": " + typeof virtualAttackUnit.secondary);
+		
 		return virtualAttackUnit;
 	},
 	
@@ -510,7 +490,6 @@ var VirtualAttackControl = {
 	isAttackContinue: function(virtualAttackUnit) {
 		var i, count;
 		var weapon = virtualAttackUnit.weapon;
-		var secondary = virtualAttackUnit.secondary;
 		var result = false;
 		
 		count = virtualAttackUnit.stateArray.length;
@@ -524,25 +503,14 @@ var VirtualAttackControl = {
 		// Check if continue attack.
 		// If there's no number of use of the weapon, the attack cannot continue sometimes.
 		if (weapon !== null) {
-			//if the weapon is ranged, check the equipped ammunition. Attack cannot continue if either the weapon is broken, the secondary is broken, 
-			if (ItemControl.isRangedWeapon(weapon) && ItemControl.isAmmunition(secondary)) {
-				if (weapon.getLimitMax === 0 || weapon.getLimit() === WeaponLimitValue.BROKEN) {
-					result = true;
-				}
-				else if (weapon.getLimit() - virtualAttackUnit.weaponUseCount > 0 && secondary.getLimit() - virtualAttackUnit.secondaryUseCount > 0) {
-					result = true;
-				}
+			if (weapon.getLimitMax() === 0 || weapon.getLimit() === WeaponLimitValue.BROKEN) {
+				// If the durability is 0 or destroyed, it can be used many times.
+				result = true;
 			}
-			else {
-				if (weapon.getLimitMax() === 0 || weapon.getLimit() === WeaponLimitValue.BROKEN) {
-					// If the durability is 0 or destroyed, it can be used many times.
-					result = true;
-				}
-				else if (weapon.getLimit() - virtualAttackUnit.weaponUseCount > 0) {
-					// Number of uses of weapon at this battle is recorded at weaponUseCount.
-					// If this amount minus weapon durability is greater than 0, the weapon still can be used and can attack.
-					result = true;
-				}
+			else if (weapon.getLimit() - virtualAttackUnit.weaponUseCount > 0) {
+				// Number of uses of weapon at this battle is recorded at weaponUseCount.
+				// If this amount minus weapon durability is greater than 0, the weapon still can be used and can attack.
+				result = true;
 			}
 		}
 		
@@ -605,34 +573,6 @@ var VirtualAttackControl = {
 			virtualAttackUnit.attackCount = 0;
 			virtualAttackUnit.roundCount = 0;
 		}
-	},
-	
-	getElementDefenses: function(item, shield) {
-		var elmt = item.custom.element;
-		var elmntDef = 0;
-		if (elmt) {
-			elmntDef = shield.custom.elementDefenses[elmt];
-		}
-		return elmntDef;
-	},
-	
-	getTargetShieldBoost: function(weapon, shield) {
-		if (Miscellaneious.isPhysicsBattle(weapon)) {
-			return shield.custom.blockValues.defense;
-		}
-		else {
-			return shield.custom.blockValues.resistance;
-		}
-	},
-	
-	canShieldBlock: function(weapon, ammun, shield) {
-		if (ammun) {
-			return VirtualAttackControl.getElementDefenses(ammun, shield) + VirtualAttackControl.getTargetShieldBoost(weapon, shield) > 0;
-		}
-		else if (!ammun && weapon) {
-			return VirtualAttackControl.getElementDefenses(weapon, shield) + VirtualAttackControl.getTargetShieldBoost(weapon, shield) > 0;
-		}
-		return false;
 	}
 };
 
@@ -657,10 +597,6 @@ AttackEvaluator.HitCritical = defineObject(BaseAttackEvaluator,
 	
 	evaluateAttackEntry: function(virtualActive, virtualPassive, attackEntry) {
 		this._skill = SkillControl.checkAndPushSkill(virtualActive.unitSelf, virtualPassive.unitSelf, attackEntry, true, SkillType.TRUEHIT);
-		var ammun = ItemControl.isAmmunition(virtualActive.secondary) ? virtualActive.secondary : null;
-		var shield = ItemControl.isShield(virtualPassive.secondary) ? virtualPassive.secondary : null;
-		var weapon = virtualActive.weapon;
-		var percent;
 		
 		// Check if the attack will hit.
 		attackEntry.isHit = this.isHit(virtualActive, virtualPassive, attackEntry);
@@ -677,38 +613,6 @@ AttackEvaluator.HitCritical = defineObject(BaseAttackEvaluator,
 		// Check if it's critical.
 		attackEntry.isCritical = this.isCritical(virtualActive, virtualPassive, attackEntry);
 		
-		//Check if the passive unit has a shield and can use it.
-		if (shield && shield.getLimit() - virtualPassive.secondaryUseCount > 0) {
-			if (ItemControl.isRangedWeapon(weapon) && ammun) {
-				if (!ammun.custom.ignoreShields) {
-					percent = AbilityCalculator.getShieldAccuracy(virtualPassive.unitSelf, shield);
-					if (Probability.getProbability(percent)) {
-						attackEntry.isBlocked = VirtualAttackControl.canShieldBlock(weapon, ammun, shield);
-					}
-					else {
-						attackEntry.isBlocked = false;
-					}
-				}
-				else {
-					attackEntry.isBlocked = false;
-				}
-			}
-			else if (!ItemControl.isRangedWeapon(weapon) && !weapon.custom.ignoreShields){
-				percent = AbilityCalculator.getShieldAccuracy(virtualPassive.unitSelf, shield);
-				if (Probability.getProbability(percent)) {
-					attackEntry.isBlocked = VirtualAttackControl.canShieldBlock(weapon, null, shield);
-				}
-				else {
-					attackEntry.isBlocked = false;
-				}
-			}
-			else {
-				attackEntry.isBlocked = false;
-			}
-		}
-		else {
-			attackEntry.isBlocked = false;
-		}
 		// Calculate damage to give.
 		attackEntry.damagePassive = this.calculateDamage(virtualActive, virtualPassive, attackEntry);
 		
@@ -740,7 +644,7 @@ AttackEvaluator.HitCritical = defineObject(BaseAttackEvaluator,
 	},
 	
 	calculateCritical: function(virtualActive, virtualPassive, attackEntry) {
-		var percent = CriticalCalculator.calculateCritical(virtualActive.unitSelf, virtualPassive.unitSelf, virtualActive.weapon, virtualActive.secondary, virtualActive.totalStatus, virtualPassive.totalStatus);
+		var percent = CriticalCalculator.calculateCritical(virtualActive.unitSelf, virtualPassive.unitSelf, virtualActive.weapon, virtualActive.totalStatus, virtualPassive.totalStatus);
 		
 		return Probability.getProbability(percent);
 	},
@@ -761,7 +665,7 @@ AttackEvaluator.HitCritical = defineObject(BaseAttackEvaluator,
 			return virtualPassive.hp;
 		}
 		
-		return DamageCalculator.calculateDamage(virtualActive.unitSelf, virtualPassive.unitSelf, virtualActive.weapon, virtualActive.secondary, attackEntry.isCritical, virtualActive.totalStatus, virtualPassive.totalStatus, trueHitValue);
+		return DamageCalculator.calculateDamage(virtualActive.unitSelf, virtualPassive.unitSelf, virtualActive.weapon, attackEntry.isCritical, virtualActive.totalStatus, virtualPassive.totalStatus, trueHitValue);
 	},
 	
 	_checkStateAttack: function(virtualActive, virtualPassive, attackEntry) {
@@ -869,20 +773,6 @@ AttackEvaluator.ActiveAction = defineObject(BaseAttackEvaluator,
 	_arrangePassiveDamage: function(virtualActive, virtualPassive, attackEntry) {
 		var damagePassive = attackEntry.damagePassive;
 		var value = this._getDamageGuardValue(virtualActive, virtualPassive, attackEntry);
-		var weapon = virtualActive.weapon;
-		var shield = ItemControl.isShield(virtualPassive.secondary) ? virtualPassive.secondary : null;
-		var ammun = ItemControl.isAmmunition(virtualActive.secondary) ? virtualActive.secondary : null;
-		var blockValue = 0;
-		
-		if (attackEntry.isBlocked) {
-			if (ammun) {
-				blockValue = VirtualAttackControl.getElementDefenses(ammun, shield) + VirtualAttackControl.getTargetShieldBoost(weapon, shield);
-			}
-			else {
-				blockValue = VirtualAttackControl.getElementDefenses(weapon, shield) + VirtualAttackControl.getTargetShieldBoost(weapon, shield);
-			}
-			damagePassive = Math.max(damagePassive - blockValue, 0);
-		}
 		
 		if (value !== -1) {
 			value = 100 - value;

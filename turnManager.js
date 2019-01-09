@@ -284,6 +284,7 @@ var TurnManager = {
 			}
 		}
 	};
+	
 
 	PlayerTurn._checkAutoTurnEnd = function() {
 		var i, unit;
@@ -756,4 +757,5 @@ var TurnManager = {
 		AttackControl.setPreAttackObject(null);
 		BattlerChecker.setUnit(null, null);
 	}
+	
 })();
